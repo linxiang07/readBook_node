@@ -7,7 +7,7 @@ const fs = require("fs");
 const fsPromises = require("fs/promises");
 const path = require("path");
 let count = 0; //叠加
-let url = 'http://www.81zw.me/book/354356/'; //小说Url
+let url = 'http://www.81zw.me/book/111138/'; //小说Url
 let list = []; //章节List
 let booksName = ''; //小说名称
 let read = './read.json'; // 配置文件位置
@@ -15,7 +15,7 @@ let read = './read.json'; // 配置文件位置
 /**
  * 获取小说目录页
  */
-const books = function () {
+function books() {
     request(url, function (err, res, body) {
         if (!err && res.statusCode == 200) {
             console.log(`获取小说基本信息成功·······`)
@@ -30,7 +30,7 @@ const books = function () {
  * @param {*} body 
  */
 async function booksQuery(body) {
-    if (!booksName) {
+    if (!fs.existsSync('/read.json')) {
         $ = cheerio.load(body);
         booksName = $('#info').find('h1').text().trim(); //小说名称
         $('#list').find('a').each(function (i, e) { //获取章节UrlList
@@ -50,28 +50,28 @@ async function booksQuery(body) {
  * 获取章节页面信息
  * 
  */
-const getBody = function () {
+function getBody() {
     const rr = require('./read.json');
     const readItem = rr.find((item) => !item.isLoad);
-    if (!readItem.key) {
+    if (rr.every((item) => item.isLoad)) {
         console.log('下载完成！！！！！！');
         return;
     }
-    Object.keys(require.cache).forEach(function(key) {
-    delete require.cache[key];
+    Object.keys(require.cache).forEach(function (key) {
+        delete require.cache[key];
     })
     let primUrl = url + readItem.key;
-    console.log(readItem)
+    console.log(`进度: \x1B[36m ${((rr.filter((item) => item.isLoad).length / rr.length) * 100).toFixed(2)}%\x1B[39m,   下载地址: \x1B[36m${readItem.key}\x1B[39m,  下载章节: \x1B[36m${readItem.title}\x1B[39m`)
     request(primUrl, { timeout: 10000 }, async function (err, res, body) {
         if (!err && res.statusCode == 200) {
             await setReadJson(rr.map((item) => {
                 if (item.key === readItem.key) {
-                    return { key: item.key, isLoad: true };
+                    return { ...item, isLoad: true };
                 }
                 return item;
             }))
             toQuery(body);
-            
+
         } else {
             console.log('err:' + err)
             getBody()
@@ -84,8 +84,17 @@ const getBody = function () {
  */
 async function toQuery(body) {
     $ = cheerio.load(body);
-    const title = $('h1').text(); //获取章节标题
-    const content = String($('#content').html()).replace(/<br>/g, '\n').replace('<script type="text/javascript" src="/js/chaptererror.js"></script>', ''); //获取当前章节文本内容并去除文本所有空格
+    let title = $('h1').text(); //获取章节标题
+    if (!/^第.*章/.test(title) && String(title).includes('、')) {
+        const arr = title.split('、');
+        const obj = arr.shift();
+        if (obj) {
+            title = `第${obj}章 ${arr.join('、')}`
+        }
+    }
+    let content = String($('#content').html()).replace(/<br>/g, '\n'); //获取当前章节文本内容并去除文本所有空格
+    content = content.replace('<script type="text/javascript" src="/js/chaptererror.js"></script>', '');
+    content = content.replace(/&nbsp;/g, '');
     await writeFs(title, content.trim());
 }
 /**
@@ -99,7 +108,7 @@ async function writeFs(title, content) {
         if (err) {
             console.log(err)
         } else {
-            console.log(title + '········保存成功')
+            console.log(`\x1B[32m保存成功:\x1B[39m \x1B[93m${title}\x1B[39m `)
             if (count + 1 < list.length) { //当前页码是否超过章节数
                 count = count + 1;
                 getBody();
@@ -112,7 +121,7 @@ async function writeFs(title, content) {
  * 
  * @param {any} to 
  */
-const createFolder = function (to) { //文件写入
+function createFolder(to) { //文件写入
     var sep = path.sep
     var folders = path.dirname(to).split(sep);
     var p = '';
