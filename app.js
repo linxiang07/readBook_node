@@ -7,7 +7,7 @@ const fs = require("fs");
 const fsPromises = require("fs/promises");
 const path = require("path");
 let count = 0; //叠加
-let url = 'http://www.81zw.me/book/111138/'; //小说Url
+let url = 'https://www.81zw.me/book/295749/'; //小说Url
 let list = []; //章节List
 let booksName = ''; //小说名称
 let read = './read.json'; // 配置文件位置
@@ -85,11 +85,28 @@ function getBody() {
 async function toQuery(body) {
     $ = cheerio.load(body);
     let title = $('h1').text(); //获取章节标题
+    // 标题形式: 1、
     if (!/^第.*章/.test(title) && String(title).includes('、')) {
         const arr = title.split('、');
         const obj = arr.shift();
         if (obj) {
             title = `第${obj}章 ${arr.join('、')}`
+        }
+    }
+    // 标题形式: x.
+    if (!/^第.*章/.test(title) && /^[0-9]*\./.test(title)) {
+        const arr = title.split('.');
+        const obj = arr.shift();
+        if (obj) {
+            title = `第${obj}章 ${arr.join('.')}`
+        }
+    }
+    // 标题形式: x 
+    if (!/^第.*章/.test(title) && /^[0-9]*\s/.test(title)) {
+        const arr = title.split(' ');
+        const obj = arr.shift();
+        if (obj) {
+            title = `第${obj}章 ${arr.join(' ')}`
         }
     }
     let content = String($('#content').html()).replace(/<br>/g, '\n'); //获取当前章节文本内容并去除文本所有空格
