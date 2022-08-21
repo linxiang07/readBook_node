@@ -7,7 +7,8 @@ const fs = require("fs");
 const fsPromises = require("fs/promises");
 const path = require("path");
 let count = 0; //叠加
-let url = 'https://www.81zw.me/book/295749/'; //小说Url
+const baseURL = "http://www.tushumi.com";
+let url = `${baseURL}/shu/87791/`; //小说Url
 let list = []; //章节List
 let booksName = ''; //小说名称
 let read = './read.json'; // 配置文件位置
@@ -34,7 +35,8 @@ async function booksQuery(body) {
         $ = cheerio.load(body);
         booksName = $('#info').find('h1').text().trim(); //小说名称
         $('#list').find('a').each(function (i, e) { //获取章节UrlList
-            list.push({ key: $(e).attr('href'), title: $(e).text(), isLoad: false })
+            const baseKey = $(e).attr('href');
+            list.push({ key: baseKey.includes('http') ? baseKey : baseURL + $(e).attr('href'), title: $(e).text(), isLoad: false })
         });
         await setReadJson(list)
     }
@@ -60,7 +62,7 @@ function getBody() {
     Object.keys(require.cache).forEach(function (key) {
         delete require.cache[key];
     })
-    let primUrl = url + readItem.key;
+    let primUrl = readItem.key.includes('http') ? readItem.key : url + readItem.key;
     console.log(`进度: \x1B[36m ${((rr.filter((item) => item.isLoad).length / rr.length) * 100).toFixed(2)}%\x1B[39m,   下载地址: \x1B[36m${readItem.key}\x1B[39m,  下载章节: \x1B[36m${readItem.title}\x1B[39m`)
     request(primUrl, { timeout: 10000 }, async function (err, res, body) {
         if (!err && res.statusCode == 200) {
@@ -109,7 +111,10 @@ async function toQuery(body) {
             title = `第${obj}章 ${arr.join(' ')}`
         }
     }
+    $('[class="bottem"]').remove();
     let content = String($('#content').html()).replace(/<br>/g, '\n'); //获取当前章节文本内容并去除文本所有空格
+    content = content.replace(/<p>/g, ''); //获取当前章节文本内容并去除文本所有空格
+    content = content.replace(/<\/p>/g, '\n\n'); //获取当前章节文本内容并去除文本所有空格
     content = content.replace('<script type="text/javascript" src="/js/chaptererror.js"></script>', '');
     content = content.replace(/&nbsp;/g, '');
     await writeFs(title, content.trim());
