@@ -3,12 +3,13 @@
  */
 const cheerio = require("cheerio");
 const request = require("request");
+const c2nmoney = require('c2nmoney').c2n;
 const fs = require("fs");
 const fsPromises = require("fs/promises");
 const path = require("path");
 let count = 0; //叠加
-const baseURL = "http://www.tushumi.com";
-let url = `${baseURL}/shu/87791/`; //小说Url
+const baseURL = "http://www.biqugse.com";
+let url = `${baseURL}/86312/`; //小说Url
 let list = []; //章节List
 let booksName = ''; //小说名称
 let read = './read.json'; // 配置文件位置
@@ -26,9 +27,27 @@ function books() {
         }
     })
 }
+function getTitleIndexValue(title) {
+    const dIndex = title.indexOf('第');
+    const zIndex = title.indexOf('章');
+    const num = title.slice(dIndex + 1, zIndex);
+    return isNaN(+num) ? c2nmoney(num) : num;
+}
+function formatLsit(params) {
+    if (!Array.isArray(params)) {return [];}
+    let arr = params.slice();
+    arr = arr.map((item) => ({ ...item, title: (item.title || '').replace('章', '章 ') }));
+    arr = arr.sort((a, b) => {
+        const numA = getTitleIndexValue(a.title);
+        const numB = getTitleIndexValue(b.title);
+        return numA - numB;
+    })
+    return arr;
+}
+
 /**
  * 处理小说名称及其小说目录
- * @param {*} body 
+ * @param {*} body f
  */
 async function booksQuery(body) {
     if (!fs.existsSync('/read.json')) {
@@ -38,6 +57,7 @@ async function booksQuery(body) {
             const baseKey = $(e).attr('href');
             list.push({ key: baseKey.includes('http') ? baseKey : baseURL + $(e).attr('href'), title: $(e).text(), isLoad: false })
         });
+        list = formatLsit(list);
         await setReadJson(list)
     }
     if (await !fs.existsSync(`/book/${booksName}.txt`)) {
