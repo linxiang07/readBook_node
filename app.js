@@ -8,8 +8,8 @@ const fs = require("fs");
 const fsPromises = require("fs/promises");
 const path = require("path");
 let count = 0; //叠加
-const baseURL = "http://www.biqugse.com";
-let url = `${baseURL}/86312/`; //小说Url
+const baseURL = "https://www.wmdown8.com";
+let url = `${baseURL}/novel/QJ0dN6DLdLO.html`; //小说Url
 let list = []; //章节List
 let booksName = ''; //小说名称
 let read = './read.json'; // 配置文件位置
@@ -31,7 +31,7 @@ function getTitleIndexValue(title) {
     const dIndex = title.indexOf('第');
     const zIndex = title.indexOf('章');
     const num = title.slice(dIndex + 1, zIndex);
-    return isNaN(+num) ? c2nmoney(num) : num;
+    return isNaN(+num) ? c2nmoney(num).n : num;
 }
 function formatLsit(params) {
     if (!Array.isArray(params)) {return [];}
@@ -52,8 +52,16 @@ function formatLsit(params) {
 async function booksQuery(body) {
     if (!fs.existsSync('/read.json')) {
         $ = cheerio.load(body);
-        booksName = $('#info').find('h1').text().trim(); //小说名称
-        $('#list').find('a').each(function (i, e) { //获取章节UrlList
+        let infoDom = $('#info');
+        if (infoDom.html() === null) {
+            infoDom = $('.info');
+        }
+        booksName = infoDom.find('h1').text().trim(); //小说名称
+        let listDom = $('#list');
+        if (listDom.html() === null) {
+            listDom = $('.listmain');
+        }
+        listDom.find('a').each(function (i, e) { //获取章节UrlList
             const baseKey = $(e).attr('href');
             list.push({ key: baseKey.includes('http') ? baseKey : baseURL + $(e).attr('href'), title: $(e).text(), isLoad: false })
         });
